@@ -1,0 +1,6 @@
+<RCC version="1.0">
+    <qresource>
+        <file alias="AppIcon">nyanCat.gif</file>
+        <file alias="MainWindow">MainWindow.qml</file>
+    </qresource>
+</RCC>
