@@ -1,0 +1,17 @@
+project(Server
+        VERSION ${CMAKE_PROJECT_VERSION}
+        LANGUAGES CXX)
+
+find_package(Qt6 COMPONENTS Core REQUIRED)
+add_executable(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE Base)
+
+add_custom_target(${PROJECT_NAME}Run
+                  DEPENDS ${PROJECT_NAME}
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}")
+
+file(GLOB hpp *.hpp)
+file(GLOB cpp *.cpp)
+file(GLOB rcc "")
+
+target_sources(${PROJECT_NAME} PRIVATE ${hpp} ${cpp} ${rcc})
