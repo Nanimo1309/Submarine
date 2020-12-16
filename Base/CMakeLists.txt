@@ -4,6 +4,8 @@ project(Base
 
 find_package(Qt6 COMPONENTS Core REQUIRED)
 add_library(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::Core)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 configure_file(Info.hpp.in Info.hpp)
 

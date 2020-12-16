@@ -1,7 +1,7 @@
 #ifndef SOCKETBASE_HPP
 #define SOCKETBASE_HPP
 
-#include <QByteArray>
+#include <QtGlobal>
 
 class SocketBase
 {
@@ -13,30 +13,25 @@ protected:
         CameraData
     };
 
-    struct Message
-    {
-        quint64 id;
-        MessageType type;
-    };
-
     struct MotorSetting
     {
-        quint8 left;
-        quint8 right;
-        quint8 immersion;
+        float left;
+        float right;
+        float immersion;
     };
 
     struct CameraSetting
     {
-        quint8 xAxis;
-        quint8 yAxis;
+        float xAxis;
+        float yAxis;
     };
 
     struct CameraData
     {
+        quint64 id;
         quint8 part;
         quint64 size;
-        QByteArray data;
+        // data
     };
 };
 
