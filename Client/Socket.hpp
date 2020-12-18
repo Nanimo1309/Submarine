@@ -22,16 +22,17 @@ public:
 
 signals:
     void connected();
+    void otherConnected(); // Other device is connected
     void disconnected();
 
     void cameraImage(QByteArray data);
 
 public slots:
-    void connect(QHostAddress address);
+    void connectToHost(QHostAddress address, quint16 port);
     void disconnect();
 
-    void setMotor(float left, float right, float immersion);
-    void setCamera(float xAxis, float yAxis);
+    void motor(float left, float right, float immersion);
+    void camera(float xAxis, float yAxis);
 
 private:
     QTcpSocket* m_tcp;

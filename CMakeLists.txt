@@ -22,4 +22,6 @@ add_custom_target(${PROJECT_NAME}
                   DEPENDS Client Server)
 
 add_custom_target(${PROJECT_NAME}Run
-                  DEPENDS ${PROJECT_NAME} ClientRun ServerRun)
+                  DEPENDS ${PROJECT_NAME}
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/Server/Server"
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/Client/Client")

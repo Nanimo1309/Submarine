@@ -32,7 +32,7 @@ public slots:
     void cameraImage(QByteArray data);
 
 private:
-    QTcpSrever* m_server;
+    QTcpServer* m_server;
     QTcpSocket* m_tcp;
     QUdpSocket* m_udp;
 };

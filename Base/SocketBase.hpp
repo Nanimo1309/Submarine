@@ -6,10 +6,17 @@
 class SocketBase
 {
 protected:
-    enum MessageType: quint8
+    enum class MessageType: quint8
     {
+        // Server responses
+        AcceptConnection,
+        OtherConnected,
+
+        // Control data
         MotorSetting,
         CameraSetting,
+
+        // Camera image
         CameraData
     };
 
