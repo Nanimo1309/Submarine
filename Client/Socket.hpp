@@ -6,9 +6,8 @@
 #include <QObject>
 #include <QHostAddress>
 #include <QByteArray>
-#include <QMap>
+#include <QList>
 
-class QTcpSocket;
 class QUdpSocket;
 
 class Socket:
@@ -25,26 +24,27 @@ signals:
     void otherConnected(); // Other device is connected
     void disconnected();
 
-    void cameraImage(QByteArray data);
+    void cameraData(QByteArray data);
 
 public slots:
     void connectToHost(QHostAddress address, quint16 port);
     void disconnect();
 
-    void motor(float left, float right, float immersion);
-    void camera(float xAxis, float yAxis);
+    void setting(float leftMotor, float rightMotor, float immersion, float cameraXAxis, float cameraYAxis);
 
 private:
-    QTcpSocket* m_tcp;
+    QHostAddress m_address;
+    quint16 port;
     QUdpSocket* m_udp;
 
     struct CameraBufferStruct
     {
+        quint64 id;
         quint8 parts;
         QByteArray data;
     };
 
-    QMap<quint8, CameraBufferStruct> m_cameraBuffer;
+    QList<CameraBufferStruct> m_cameraBuffer;
 };
 
 #endif // SOCKET_HPP

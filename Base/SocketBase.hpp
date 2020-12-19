@@ -8,37 +8,71 @@ class SocketBase
 protected:
     enum class MessageType: quint8
     {
-        // Server responses
+        // From server to client
         AcceptConnection,
         OtherConnected,
+        ServerDisconnect,
 
-        // Control data
-        MotorSetting,
-        CameraSetting,
+        ServerStatus,
+        CameraData,
 
-        // Camera image
-        CameraData
+        // From client to server
+        ConnectionQuery,
+        ClientDisconnect,
+
+        ControlData
     };
 
-    struct MotorSetting
+    struct Header
     {
-        float left;
-        float right;
+        quint64 id;
+        MessageType type;
+    };
+
+    struct ControlData
+    {
+        float leftMotor;
+        float rightMotor;
+
         float immersion;
+
+        float cameraXAxis;
+        float cameraYAxis;
     };
 
-    struct CameraSetting
+    struct ServerStatus
     {
-        float xAxis;
-        float yAxis;
+        quint64 controlDataId;
+        quint64 controlFlagsId;
     };
 
     struct CameraData
     {
-        quint64 id;
-        quint8 part;
-        quint64 size;
+        quint8 part; // Number of the package
+        quint64 size; // Whole data size
         // data
+    };
+
+    template
+    <
+        class T,
+
+        std::enable_if_t
+        <
+            std::is_same_v<T, ControlData>
+            || std::is_same_v<T, ServerStatus>
+            || std::is_same_v<T, CameraData>,
+            bool
+        > = true
+    >
+    union ReinterpretMessage
+    {
+        struct:
+            Header,
+            T
+        {} data;
+
+        char byteData[sizeof(data)];
     };
 };
 

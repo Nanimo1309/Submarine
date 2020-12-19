@@ -21,14 +21,9 @@ int main(int argc, char** argv)
         qDebug() << "Disconnected";
     });
 
-    QObject::connect(socket, &Socket::motor, [](float left, float right, float immersion)
+    QObject::connect(socket, &Socket::setting, [](float left, float right, float immersion, float cameraXAxis, float cameraYAxis)
     {
-        qDebug() << "Motor: " << left << right << immersion;
-    });
-
-    QObject::connect(socket, &Socket::camera, [](float x, float y)
-    {
-        qDebug() << "Camera: " << x << y;
+        qDebug() << "Motor: " << left << right << immersion << cameraXAxis << cameraYAxis;
     });
 
     return QCoreApplication::exec();

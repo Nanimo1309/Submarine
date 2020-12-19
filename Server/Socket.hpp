@@ -4,10 +4,9 @@
 #include "SocketBase.hpp"
 
 #include <QObject>
+#include <QHostAddress>
 #include <QByteArray>
 
-class QTcpServer;
-class QTcpSocket;
 class QUdpSocket;
 
 class Socket:
@@ -25,15 +24,14 @@ signals:
     void connected();
     void disconnected();
 
-    void motor(float left, float right, float immersion);
-    void camera(float xAxis, float yAxis);
+    void setting(float leftMotor, float rightMotor, float immersion, float cameraXAxis, float cameraYAxis);
 
 public slots:
-    void cameraImage(QByteArray data);
+    void cameraData(QByteArray data);
 
 private:
-    QTcpServer* m_server;
-    QTcpSocket* m_tcp;
+    QHostAddress m_address;
+    quint16 m_port;
     QUdpSocket* m_udp;
 };
 
