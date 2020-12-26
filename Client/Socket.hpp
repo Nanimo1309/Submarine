@@ -6,13 +6,14 @@
 #include <QObject>
 #include <QHostAddress>
 #include <QByteArray>
+#include <QMap>
 #include <QList>
 
 class QUdpSocket;
 
 class Socket:
     public QObject,
-    public SocketBase
+    protected SocketBase
 {
     Q_OBJECT
 
@@ -21,21 +22,25 @@ public:
 
 signals:
     void connected();
-    void otherConnected(); // Other device is connected
+    void otherConnected();
+    void lostConnection();
     void disconnected();
 
     void cameraData(QByteArray data);
 
 public slots:
-    void connectToHost(QHostAddress address, quint16 port);
+    void connectToServer(quint16 port);
     void disconnect();
 
     void setting(float leftMotor, float rightMotor, float immersion, float cameraXAxis, float cameraYAxis);
 
 private:
     QHostAddress m_address;
-    quint16 port;
+    quint16 m_port;
     QUdpSocket* m_udp;
+
+    quint64 m_outId;
+    QMap<MessageType, quint64> m_inId;
 
     struct CameraBufferStruct
     {

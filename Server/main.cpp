@@ -1,5 +1,10 @@
 #include "Socket.hpp"
+
+#include "QtHelper.hpp"
+
 #include <QCoreApplication>
+#include <QTimer>
+#include <QString>
 
 int main(int argc, char** argv)
 {
@@ -11,19 +16,32 @@ int main(int argc, char** argv)
 
     socket->listen(2137);
 
-    QObject::connect(socket, &Socket::connected, []()
+    CONNECT(socket, connected, []()
     {
         qDebug() << "Connected";
     });
 
-    QObject::connect(socket, &Socket::disconnected, []()
+    CONNECT(socket, disconnected, []()
     {
         qDebug() << "Disconnected";
     });
 
-    QObject::connect(socket, &Socket::setting, [](float left, float right, float immersion, float cameraXAxis, float cameraYAxis)
+    CONNECT(socket, setting, [](float left, float right, float immersion, float cameraXAxis, float cameraYAxis)
     {
         qDebug() << "Motor: " << left << right << immersion << cameraXAxis << cameraYAxis;
+    });
+
+    QTimer::singleShot(1000, [socket]()
+    {
+        QByteArray data;
+
+        for(size_t i = 0; i < 1000; ++i)
+        {
+            data.append(QString::number(i).toLocal8Bit());
+            data.append("_");
+        }
+
+        socket->cameraData(data);
     });
 
     return QCoreApplication::exec();

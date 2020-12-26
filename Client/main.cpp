@@ -1,4 +1,7 @@
 #include "Socket.hpp"
+
+#include "QtHelper.hpp"
+
 #include <QCoreApplication>
 #include <QTimer>
 
@@ -12,26 +15,39 @@ int main(int argc, char** argv)
 
     auto timer = new QTimer(socket);
 
-    QObject::connect(socket, &Socket::connected, [socket, timer]()
+    CONNECT(socket, connected, ([socket, timer]()
     {
         qDebug() << "Connected";
 
-        QObject::connect(timer, &QTimer::timeout, [socket]()
+        CONNECT(timer, timeout, [socket]()
         {
             socket->setting(1.23f, 2.34f, 3.45f, 4.56f, 5.67f);
         });
 
         timer->start(1000);
+
+        CONNECT(socket, cameraData, [](QByteArray data)
+        {
+            qDebug() << data;
+        });
+    }));
+
+    CONNECT(socket, otherConnected, []()
+    {
+        qDebug() << "Other Connected";
     });
 
-    QObject::connect(socket, &Socket::disconnected, [timer]()
+    CONNECT(socket, disconnected, [timer]()
     {
         qDebug() << "Disconnected";
 
         timer->deleteLater();
     });
 
-    socket->connectToHost(QHostAddress("::1"), 2137);
+    socket->connectToServer(2137);
+
+    //QTimer::singleShot(2000, [socket](){socket->disconnect(); qDebug() << "Disconnected";});
+    //QTimer::singleShot(2000, [socket](){socket->deleteLater(); qDebug() << "Deleted";});
 
     return QCoreApplication::exec();
 }
