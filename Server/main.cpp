@@ -16,9 +16,33 @@ int main(int argc, char** argv)
 
     socket->listen(2137);
 
-    CONNECT(socket, connected, []()
+    CONNECT(socket, connected, [socket]()
     {
         qDebug() << "Connected";
+
+        auto timer = new QTimer(socket);
+
+        CONNECT(timer, timeout, [socket]()
+        {
+            socket->status(99.8f);
+        });
+
+        timer->start(200);
+
+        QTimer::singleShot(1000, [socket]()
+        {
+            QByteArray temp;
+
+            for(size_t i = 0; i < 50000; ++i)
+                temp.append(std::to_string(i));
+
+            socket->cameraData(temp);
+        });
+    });
+
+    CONNECT(socket, lostConnection, []()
+    {
+        qDebug() << "Lost Connection";
     });
 
     CONNECT(socket, disconnected, []()
@@ -29,19 +53,6 @@ int main(int argc, char** argv)
     CONNECT(socket, setting, [](float left, float right, float immersion, float cameraXAxis, float cameraYAxis)
     {
         qDebug() << "Motor: " << left << right << immersion << cameraXAxis << cameraYAxis;
-    });
-
-    QTimer::singleShot(1000, [socket]()
-    {
-        QByteArray data;
-
-        for(size_t i = 0; i < 1000; ++i)
-        {
-            data.append(QString::number(i).toLocal8Bit());
-            data.append("_");
-        }
-
-        socket->cameraData(data);
     });
 
     return QCoreApplication::exec();

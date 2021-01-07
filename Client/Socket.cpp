@@ -6,10 +6,22 @@
 #include <QNetworkDatagram>
 
 Socket::Socket(QObject* parent):
-    QObject     (parent),
-    m_udp       (nullptr)
+    QObject             (parent),
+    m_udp               (nullptr),
+    m_lastResponseHash  (0)
 {
-    CONNECT(this, destroyed, this, disconnect);
+    CONNECT(&m_responseTimer, timeout, [this]()
+    {
+        decltype(m_lastResponseHash) temp = m_statusInId + m_cameraDataInId;
+
+        if(m_lastResponseHash != temp)
+            m_lastResponseHash = temp;
+        else
+        {
+            lostConnection();
+            disconnect();
+        }
+    });
 }
 
 void Socket::connectToServer(quint16 port)
@@ -21,90 +33,107 @@ void Socket::connectToServer(quint16 port)
 
     m_udp = new QUdpSocket;
 
+    CONNECT(m_udp, errorOccurred, [](QAbstractSocket::SocketError error){qDebug() << error;});
+
     CONNECT(m_udp, readyRead, [this]()
     {
-        auto datagram = m_udp->receiveDatagram();
-        auto header = reinterpret_cast<const Header*>(datagram.data().constData());
-
-        switch(header->type)
+        while(m_udp->hasPendingDatagrams())
         {
-        case MessageType::AcceptConnection:
-            if(m_address.isNull() && m_port == datagram.senderPort())
-            {
-                m_address = datagram.senderAddress();
-                connected();
-            }
-            break;
-        case MessageType::OtherConnected:
-            if(m_address.isNull() && m_port == datagram.senderPort())
-            {
-                m_udp->deleteLater();
-                m_udp = nullptr;
-                otherConnected();
-            }
-            break;
-        case MessageType::ServerShutdown:
-            if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
-            {
-                m_udp->deleteLater();
-                m_udp = nullptr;
-                disconnected();
-            }
-            break;
-        case MessageType::ServerStatus:
-            if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
-            {
+            auto datagram = m_udp->receiveDatagram();
+            auto header = reinterpret_cast<const Header*>(datagram.data().constData());
 
-            }
-            break;
-        case MessageType::CameraData:
-            if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
+            switch(header->type)
             {
-                auto header = reinterpret_cast<const ReinterpretMessage<CameraData>*>(datagram.data().constData());
-
-                constexpr auto maxSize = MAX_PACKET_SIZE - sizeof(*header);
-                auto parts = header->data.size / maxSize + (header->data.size % maxSize ? 1 : 0);
-
-                CameraBufferStruct* buffer = nullptr;
-
-                for(size_t i = 0; i < m_cameraBuffer.size(); ++i)
+            case MessageType::AcceptConnection:
+                if(m_address.isNull() && m_port == datagram.senderPort())
                 {
-                    if(m_cameraBuffer[i].id == header->data.id)
-                    {
-                        buffer = &m_cameraBuffer[i];
-                        break;
-                    }
+                    m_address = datagram.senderAddress();
+
+                    m_statusInId = 0;
+                    m_cameraDataInId = 0;
+
+                    m_responseTimer.start(MAX_SILENCE_TIME);
+
+                    connected();
                 }
-
-                if(!buffer)
+                break;
+            case MessageType::OtherConnected:
+                if(m_address.isNull() && m_port == datagram.senderPort())
                 {
-                    m_cameraBuffer.push_back({header->data.id, 0, QByteArray()});
-                    buffer = &m_cameraBuffer.back();
-                    buffer->data.resize(header->data.size);
+                    m_udp->deleteLater();
+                    m_udp = nullptr;
+                    otherConnected();
                 }
-
-                auto dataSize = datagram.data().size() - sizeof(*header);
-                buffer->data.replace(header->data.part * maxSize, dataSize, datagram.data().constData() + sizeof(*header), dataSize);
-
-                if(++buffer->parts == parts)
+                break;
+            case MessageType::ServerShutdown:
+                if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
                 {
-                    cameraData(buffer->data);
+                    m_responseTimer.stop();
+
+                    m_udp->deleteLater();
+                    m_udp = nullptr;
+                    disconnected();
+                }
+                break;
+            case MessageType::Status:
+                if(m_address == datagram.senderAddress() && m_port == datagram.senderPort() && m_statusInId < header->id)
+                {
+                    auto header = reinterpret_cast<const ReinterpretMessage<Status>*>(datagram.data().constData());
+
+                    m_statusInId = header->data.id;
+
+                    status(header->data.batteryCharge);
+                }
+                break;
+            case MessageType::CameraData:
+                if(m_address == datagram.senderAddress() && m_port == datagram.senderPort() && m_cameraDataInId < header->id)
+                {
+                    auto header = reinterpret_cast<const ReinterpretMessage<CameraData>*>(datagram.data().constData());
+
+                    CameraBufferStruct* buffer = nullptr;
 
                     for(size_t i = 0; i < m_cameraBuffer.size(); ++i)
                     {
-                        if(m_cameraBuffer[i].id <= header->data.id)
-                            m_cameraBuffer.removeAt(i);
+                        if(m_cameraBuffer[i].id == header->data.id)
+                        {
+                            buffer = &m_cameraBuffer[i];
+                            break;
+                        }
+                    }
+
+                    if(!buffer)
+                    {
+                        m_cameraBuffer.push_back({header->data.id, 0, QByteArray()});
+                        buffer = &m_cameraBuffer.back();
+                        buffer->data.resize(header->data.size);
+                    }
+
+                    constexpr auto maxSize = MAX_PACKET_SIZE - sizeof(*header);
+
+                    auto dataSize = datagram.data().size() - sizeof(*header);
+                    buffer->data.replace(header->data.part * maxSize, dataSize, datagram.data().constData() + sizeof(*header), dataSize);
+
+                    if(++buffer->parts == header->data.size / maxSize + (header->data.size % maxSize ? 1 : 0))
+                    {
+                        m_cameraDataInId = buffer->id;
+
+                        cameraData(buffer->data);
+
+                        for(size_t i = 0; i < m_cameraBuffer.size(); ++i)
+                            if(m_cameraBuffer[i].id <= buffer->id)
+                                m_cameraBuffer.removeAt(i--);
                     }
                 }
+                break;
+            default:
+                assert("Socket: Invalid server message type");
+                break;
             }
-            break;
-        default:
-            assert("Socket: Invalid server message type");
-            break;
         }
     });
 
-    m_udp->bind();
+    if(!m_udp->bind())
+        throw std::runtime_error("Socket: Cannot bind server to specified port");
 
     ReinterpretMessage msg;
 
@@ -121,6 +150,8 @@ void Socket::disconnect()
 
     if(!m_address.isNull())
     {
+        m_responseTimer.stop();
+
         ReinterpretMessage<void> msg;
 
         msg.data.id = ++m_outId;

@@ -7,6 +7,7 @@
 #include <QHostAddress>
 #include <QByteArray>
 #include <QMap>
+#include <QTimer>
 
 class QUdpSocket;
 
@@ -30,6 +31,7 @@ public slots:
     void listen(quint16 port);
     void stopListening();
 
+    void status(float batteryCharge);
     void cameraData(QByteArray data);
 
 private:
@@ -37,8 +39,11 @@ private:
     quint16 m_port;
     QUdpSocket* m_udp;
 
-    quint64 m_outId;
-    QMap<MessageType, quint64> m_inId;
+    decltype(Header::id) m_outId;
+    decltype(Header::id) m_controlDataInId;
+
+    QTimer m_responseTimer;
+    decltype(Header::id) m_lastResponseHash;
 };
 
 #endif // SOCKET_HPP

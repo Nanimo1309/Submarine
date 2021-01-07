@@ -14,22 +14,23 @@ int main(int argc, char** argv)
     auto socket = new Socket(QCoreApplication::instance());
 
     auto timer = new QTimer(socket);
+    auto timer2 = new QTimer(socket);
 
-    CONNECT(socket, connected, ([socket, timer]()
+    CONNECT(timer, timeout, [socket](){socket->connectToServer(2137);});
+    timer->start(500);
+
+    CONNECT(socket, connected, ([socket, timer, timer2]()
     {
         qDebug() << "Connected";
 
-        CONNECT(timer, timeout, [socket]()
+        timer->stop();
+
+        CONNECT(timer2, timeout, [socket]()
         {
             socket->setting(1.23f, 2.34f, 3.45f, 4.56f, 5.67f);
         });
 
-        timer->start(1000);
-
-        CONNECT(socket, cameraData, [](QByteArray data)
-        {
-            qDebug() << data;
-        });
+        timer2->start(200);
     }));
 
     CONNECT(socket, otherConnected, []()
@@ -37,17 +38,27 @@ int main(int argc, char** argv)
         qDebug() << "Other Connected";
     });
 
-    CONNECT(socket, disconnected, [timer]()
+    CONNECT(socket, lostConnection, []()
+    {
+        qDebug() << "Lost Connection";
+    });
+
+    CONNECT(socket, disconnected, [timer2]()
     {
         qDebug() << "Disconnected";
 
-        timer->deleteLater();
+        timer2->stop();
     });
 
-    socket->connectToServer(2137);
+    CONNECT(socket, cameraData, [](QByteArray data)
+    {
+        qDebug() << "Received data";
+    });
 
-    //QTimer::singleShot(2000, [socket](){socket->disconnect(); qDebug() << "Disconnected";});
-    //QTimer::singleShot(2000, [socket](){socket->deleteLater(); qDebug() << "Deleted";});
+    CONNECT(socket, status, [](float batteryCharge)
+    {
+        qDebug() << batteryCharge;
+    });
 
     return QCoreApplication::exec();
 }

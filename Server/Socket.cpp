@@ -5,15 +5,36 @@
 #include <QUdpSocket>
 #include <QNetworkDatagram>
 
-#include <variant>
-
 Socket::Socket(QObject* parent):
-    QObject     (parent),
-    m_address   (QHostAddress::Null),
-    m_udp       (nullptr),
-    m_outId     (0)
+    QObject             (parent),
+    m_address           (QHostAddress::Null),
+    m_udp               (nullptr),
+    m_outId             (0),
+    m_lastResponseHash  (0)
 {
-    CONNECT(this, destroyed, this, stopListening);
+    CONNECT(&m_responseTimer, timeout, [this]()
+    {
+        decltype(m_lastResponseHash) temp = m_controlDataInId;
+
+        if(m_lastResponseHash != temp)
+            m_lastResponseHash = temp;
+        else
+        {
+            m_responseTimer.stop();
+            lostConnection();
+
+            ReinterpretMessage msg;
+
+            msg.data.id = ++m_outId;
+            msg.data.type = MessageType::ServerShutdown;
+
+            m_udp->writeDatagram(msg.byteData, sizeof(msg), m_address, m_port);
+
+            m_address = QHostAddress::Null;
+
+            disconnected();
+        }
+    });
 }
 
 void Socket::listen(quint16 port)
@@ -23,56 +44,70 @@ void Socket::listen(quint16 port)
 
     m_udp = new QUdpSocket;
 
+    CONNECT(m_udp, errorOccurred, [](QAbstractSocket::SocketError error){qDebug() << error;});
+
     CONNECT(m_udp, readyRead, [this]()
     {
-        auto datagram = m_udp->receiveDatagram();
-        auto header = reinterpret_cast<const Header*>(datagram.data().constData());
-
-        switch(header->type)
+        while(m_udp->hasPendingDatagrams())
         {
-        case MessageType::ConnectionQuery:
-            if(m_address.isNull())
+            auto datagram = m_udp->receiveDatagram();
+            auto header = reinterpret_cast<const Header*>(datagram.data().constData());
+
+            switch(header->type)
             {
-                m_address = datagram.senderAddress();
-                m_port = datagram.senderPort();
+            case MessageType::ConnectionQuery:
+                if(m_address.isNull())
+                {
+                    m_address = datagram.senderAddress();
+                    m_port = datagram.senderPort();
 
-                ReinterpretMessage msg;
+                    ReinterpretMessage msg;
 
-                msg.data.id = ++m_outId;
-                msg.data.type = MessageType::AcceptConnection;
+                    msg.data.id = ++m_outId;
+                    msg.data.type = MessageType::AcceptConnection;
 
-                m_udp->writeDatagram(msg.byteData, sizeof(msg), m_address, m_port);
+                    m_udp->writeDatagram(msg.byteData, sizeof(msg), m_address, m_port);
 
-                connected();
+                    m_controlDataInId = 0;
+
+                    m_responseTimer.start(MAX_SILENCE_TIME);
+
+                    connected();
+                }
+                else
+                {
+                    ReinterpretMessage msg;
+
+                    msg.data.id = ++m_outId;
+                    msg.data.type = MessageType::OtherConnected;
+
+                    m_udp->writeDatagram(msg.byteData, sizeof(msg), datagram.senderAddress(), datagram.senderPort());
+                }
+                break;
+            case MessageType::ClientDisconnect:
+                if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
+                {
+                    m_responseTimer.stop();
+
+                    m_address = QHostAddress::Null;
+
+                    disconnected();
+                }
+                break;
+            case MessageType::ControlData:
+                if(m_address == datagram.senderAddress() && m_port == datagram.senderPort() && m_controlDataInId < header->id)
+                {
+                    auto msg = reinterpret_cast<const ReinterpretMessage<ControlData>*>(datagram.data().constData());
+
+                    m_controlDataInId = msg->data.id;
+
+                    setting(msg->data.leftMotor, msg->data.rightMotor, msg->data.immersion, msg->data.cameraXAxis, msg->data.cameraYAxis);
+                }
+                break;
+            default:
+                assert("Socket: Invalid client message type");
+                break;
             }
-            else
-            {
-                ReinterpretMessage msg;
-
-                msg.data.id = ++m_outId;
-                msg.data.type = MessageType::OtherConnected;
-
-                m_udp->writeDatagram(msg.byteData, sizeof(msg), datagram.senderAddress(), datagram.senderPort());
-            }
-            break;
-        case MessageType::ClientDisconnect:
-            if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
-            {
-                m_address = QHostAddress::Null;
-
-                disconnected();
-            }
-            break;
-        case MessageType::ControlData:
-            if(m_address == datagram.senderAddress() && m_port == datagram.senderPort())
-            {
-                auto msg = reinterpret_cast<const ReinterpretMessage<ControlData>*>(datagram.data().constData());
-                setting(msg->data.leftMotor, msg->data.rightMotor, msg->data.immersion, msg->data.cameraXAxis, msg->data.cameraYAxis);
-            }
-            break;
-        default:
-            assert("Socket: Invalid client message type");
-            break;
         }
     });
 
@@ -87,6 +122,8 @@ void Socket::stopListening()
 
     if(!m_address.isNull())
     {
+        m_responseTimer.stop();
+
         ReinterpretMessage msg;
 
         msg.data.id = ++m_outId;
@@ -101,6 +138,20 @@ void Socket::stopListening()
 
     m_udp->deleteLater();
     m_udp = nullptr;
+}
+
+void Socket::status(float batteryCharge)
+{
+    if(!m_udp || m_address.isNull())
+        return;
+
+    ReinterpretMessage<Status> msg;
+
+    msg.data.id = ++m_outId;
+    msg.data.type = MessageType::Status;
+    msg.data.batteryCharge = batteryCharge;
+
+    m_udp->writeDatagram(msg.byteData, sizeof(msg), m_address, m_port);
 }
 
 void Socket::cameraData(QByteArray data)

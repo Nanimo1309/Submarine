@@ -2,12 +2,12 @@
 #define SOCKETBASE_HPP
 
 #include <QtGlobal>
-#include <algorithm>
 
 class SocketBase
 {
 protected:
-    constexpr const static size_t MAX_PACKET_SIZE = 1000; // Have to be greater than ReinterpretMessage
+    constexpr const static size_t MAX_PACKET_SIZE = 56000;
+    constexpr const static qint64 MAX_SILENCE_TIME = 1000;
 
     enum class MessageType: quint8
     {
@@ -16,7 +16,7 @@ protected:
         OtherConnected,
         ServerShutdown,
 
-        ServerStatus,
+        Status,
         CameraData,
 
         // From client to server
@@ -43,15 +43,14 @@ protected:
         float cameraYAxis;
     };
 
-    struct ServerStatus
+    struct Status
     {
-        quint64 controlDataId;
-        float bateryCharge;
+        float batteryCharge;
     };
 
     struct CameraData
     {
-        quint8 part; // Number of the package
+        quint16 part; // Number of the package
         quint64 size; // Whole data size
         // data
     };
@@ -67,7 +66,7 @@ protected:
     };
 
     template<class T>
-    union ReinterpretMessage<T, std::enable_if_t<std::is_same_v<T, ControlData> || std::is_same_v<T, ServerStatus> || std::is_same_v<T, CameraData>>>
+    union ReinterpretMessage<T, std::enable_if_t<std::is_same_v<T, ControlData> || std::is_same_v<T, Status> || std::is_same_v<T, CameraData>>>
     {
         struct:
             Header,

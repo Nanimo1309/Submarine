@@ -8,6 +8,7 @@
 #include <QByteArray>
 #include <QMap>
 #include <QList>
+#include <QTimer>
 
 class QUdpSocket;
 
@@ -26,6 +27,7 @@ signals:
     void lostConnection();
     void disconnected();
 
+    void status(float batteryCharge);
     void cameraData(QByteArray data);
 
 public slots:
@@ -39,17 +41,21 @@ private:
     quint16 m_port;
     QUdpSocket* m_udp;
 
-    quint64 m_outId;
-    QMap<MessageType, quint64> m_inId;
+    decltype(Header::id) m_outId;
+    decltype(Header::id) m_statusInId;
+    decltype(Header::id) m_cameraDataInId;
 
     struct CameraBufferStruct
     {
-        quint64 id;
-        quint8 parts;
+        decltype(Header::id) id;
+        decltype(CameraData::part) parts;
         QByteArray data;
     };
 
     QList<CameraBufferStruct> m_cameraBuffer;
+
+    QTimer m_responseTimer;
+    decltype(Header::id) m_lastResponseHash;
 };
 
 #endif // SOCKET_HPP
