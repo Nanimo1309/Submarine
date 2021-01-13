@@ -1,3 +1,20 @@
 **
 
+# Files
 !.gitignore
+!CMakeLists.txt
+!*.hpp
+!*.hpp.in
+!*.cpp
+!*.qrc
+!*.rc
+!*.ico
+!*.gif
+
+# Paths
+!Base/
+!Base/**
+!Client/
+!Client/**
+!Server/
+!Server/**
