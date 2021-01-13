@@ -1,12 +1,17 @@
 project(Server
-        VERSION 1.0
+        VERSION ${CMAKE_PROJECT_VERSION}
         LANGUAGES CXX)
 
-find_package(Qt5 COMPONENTS Gui REQUIRED)
+find_package(Qt5 COMPONENTS Network Gui REQUIRED)
 add_executable(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE Base Qt5::Gui)
+target_link_libraries(${PROJECT_NAME} PRIVATE Base Qt5::Network Qt5::Gui)
 
-target_include_directories(${PROJECT_NAME} PRIVATE include)
-add_subdirectory(include)
-add_subdirectory(src)
-add_subdirectory(rcc)
+add_custom_target(${PROJECT_NAME}Run
+                  DEPENDS ${PROJECT_NAME}
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}")
+
+file(GLOB hpp *.hpp)
+file(GLOB cpp *.cpp)
+file(GLOB rcc "")
+
+target_sources(${PROJECT_NAME} PRIVATE ${hpp} ${cpp} ${rcc})

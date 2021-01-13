@@ -1,21 +1,26 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(Submarine
-        VERSION 1.0
-        LANGUAGES CXX)
+if(NOT WIN32 AND NOT UNIX OR APPLE)
+    message(FATAL_ERROR "Only Windows and Linux are supported")
+endif()
 
-set(CMAKE_CXX_STANDARD 14)
+project(Submarine
+        VERSION 0.1)
+
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-if(NOT BUILD_SHARED_LIBS)
-    add_link_options(-static-libstdc++)
-endif()
-
 add_subdirectory(Base)
-add_subdirectory(Server)
 add_subdirectory(Client)
+add_subdirectory(Server)
 
-# cmake -B bin -DBUILD_SHARED_LIBS=ON -DCMAKE_PREFIX_PATH="/opt/Qt/5.15.1/gcc_64" && cmake --build bin -t Client Server && gnome-terminal -- bin/Client/Client && gnome-terminal -- bin/Server/Server
+add_custom_target(${PROJECT_NAME}
+                  DEPENDS Client Server)
+
+add_custom_target(${PROJECT_NAME}Run
+                  DEPENDS ${PROJECT_NAME}
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/Server/Server"
+                  COMMAND $<IF:$<BOOL:${WIN32}>,start,gnome-terminal> ARGS $<$<NOT:$<BOOL:${WIN32}>>:--> "${CMAKE_CURRENT_BINARY_DIR}/Client/Client")

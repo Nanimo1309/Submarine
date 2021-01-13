@@ -28,11 +28,6 @@ MainWindow::MainWindow(QObject* parent):
 
     m_cameraDisplay = m_window->findChild<QObject*>("cameraDisplay")->property("videoSurface").value<QAbstractVideoSurface*>();
     m_cameraDisplay->start(QVideoSurfaceFormat(QSize(), QVideoFrame::Format_ARGB32));
-
-    auto controler = m_window->findChild<QObject*>("controler");
-    QObject::connect(controler, SIGNAL(rightMotor(double)), this, SIGNAL(rightMotor(double)));
-    QObject::connect(controler, SIGNAL(leftMotor(double)), this, SIGNAL(leftMotor(double)));
-    QObject::connect(controler, SIGNAL(immersion(double)), this, SIGNAL(immersion(double)));
 }
 
 void MainWindow::show()

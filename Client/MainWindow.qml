@@ -6,7 +6,7 @@ import QtMultimedia 5.15
 Window
 {
     id: window
-    title: "Submarine Controler"
+    title: "Submarine Controller"
     width: 800
     height: 600
     color: "#222"
@@ -26,7 +26,7 @@ Window
 
     Item
     {
-        objectName: "controler"
+        objectName: "controller"
         focus: true
 
         signal rightMotor(real power)

@@ -8,6 +8,7 @@
 !*.cpp
 !*.qrc
 !*.rc
+
 !*.ico
 !*.gif
 
