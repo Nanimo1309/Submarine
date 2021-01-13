@@ -34,7 +34,10 @@ int main(int argc, char** argv)
             QByteArray temp;
 
             for(size_t i = 0; i < 50000; ++i)
-                temp.append(std::to_string(i));
+            {
+                auto str = std::to_string(i);
+                temp.append(str.c_str(), str.size());
+            }
 
             socket->cameraData(temp);
         });

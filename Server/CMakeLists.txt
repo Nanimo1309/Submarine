@@ -2,9 +2,9 @@ project(Server
         VERSION ${CMAKE_PROJECT_VERSION}
         LANGUAGES CXX)
 
-find_package(Qt6 COMPONENTS Network REQUIRED)
+find_package(Qt5 COMPONENTS Network REQUIRED)
 add_executable(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE Base Qt6::Network)
+target_link_libraries(${PROJECT_NAME} PRIVATE Base Qt5::Network)
 
 add_custom_target(${PROJECT_NAME}Run
                   DEPENDS ${PROJECT_NAME}
